@@ -1,120 +1,160 @@
 """
 Conversor adaptativo de imágenes a ASCII art.
-Sistema inteligente que ajusta parámetros según el tamaño objetivo.
+Implementa dos modos: FORMA (silueta clara) y DETALLE (gradientes).
 """
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 from typing import Tuple
 from .character_ramps import CharacterRamps
 
 
 class ASCIIConverter:
     """
-    Conversor adaptativo de imágenes a arte ASCII/Braille.
-    Ajusta automáticamente contraste, cuantización y proporción según el tamaño.
+    Conversor con doble modo:
+    - FORMA: Para tamaños pequeños, prioriza silueta y contraste
+    - DETALLE: Para tamaños grandes, usa dithering completo
     """
 
     @staticmethod
     def get_adaptive_params(width: int) -> dict:
         """
-        Calcula parámetros adaptativos según el ancho objetivo.
+        Parámetros optimizados para legibilidad de forma.
 
-        Args:
-            width: Ancho en caracteres
-
-        Returns:
-            Diccionario con parámetros optimizados
+        CAMBIOS CLAVE:
+        - Modo FORMA elimina/reduce dithering
+        - Contraste más agresivo en tamaños pequeños
+        - Posterización en lugar de gradientes suaves
         """
-        # Perfil PEQUEÑO (15-40 caracteres)
+        # Perfil PEQUEÑO (15-39 caracteres) - MODO FORMA PURO
         if width < 40:
             return {
-                "gamma": 1.3,  # Suaviza sombras
-                "contrast_boost": 0.85,  # Contraste moderado
-                "aspect_ratio": 0.65,  # Más altura para compensar
-                "quantization_power": 1.2,  # Favorece tonos claros
-                "profile_name": "SMALL"
+                "gamma": 1.5,  # Aclara sombras agresivamente
+                "contrast_boost": 1.3,  # Contraste muy alto
+                "aspect_ratio": 0.65,
+                "quantization_power": 1.5,  # Favorece extremos
+                "profile_name": "SMALL",
+                "mode": "FORMA",  # NUEVO
+                "dithering_strength": 0.0,  # SIN dithering
+                "edge_enhance": True,  # Realza bordes
+                "posterize_levels": 5  # Posterización fuerte
             }
 
-        # Perfil MEDIO (40-90 caracteres)
+        # Perfil MEDIO (40-89 caracteres) - MODO HÍBRIDO
         elif width < 90:
             return {
-                "gamma": 1.1,
-                "contrast_boost": 0.95,
+                "gamma": 1.2,
+                "contrast_boost": 1.1,
                 "aspect_ratio": 0.58,
-                "quantization_power": 1.0,
-                "profile_name": "MEDIUM"
+                "quantization_power": 1.1,
+                "profile_name": "MEDIUM",
+                "mode": "HIBRIDO",
+                "dithering_strength": 0.3,  # Dithering reducido
+                "edge_enhance": True,
+                "posterize_levels": 7
             }
 
-        # Perfil GRANDE (90+ caracteres)
+        # Perfil GRANDE (90+ caracteres) - MODO DETALLE
         else:
             return {
-                "gamma": 0.95,  # Permite negros profundos
-                "contrast_boost": 1.0,  # Contraste completo
-                "aspect_ratio": 0.52,  # Proporción más compacta
-                "quantization_power": 0.85,  # Aprovecha tonos oscuros
-                "profile_name": "LARGE"
+                "gamma": 1.0,
+                "contrast_boost": 1.0,
+                "aspect_ratio": 0.52,
+                "quantization_power": 0.9,
+                "profile_name": "LARGE",
+                "mode": "DETALLE",
+                "dithering_strength": 1.0,  # Dithering completo
+                "edge_enhance": False,
+                "posterize_levels": 12
             }
 
     @staticmethod
     def apply_adaptive_contrast(
             image: Image.Image,
             gamma: float,
-            contrast_boost: float
+            contrast_boost: float,
+            edge_enhance: bool = False
     ) -> Image.Image:
         """
-        Aplica normalización de contraste adaptativa.
-
-        Args:
-            image: Imagen en escala de grises
-            gamma: Factor de corrección gamma (< 1 oscurece, > 1 aclara)
-            contrast_boost: Factor de expansión del contraste (0-1)
-
-        Returns:
-            Imagen procesada
+        Contraste adaptativo con opcional realce de bordes.
         """
+        # Realzar bordes primero si es modo FORMA
+        if edge_enhance:
+            image = image.filter(ImageFilter.EDGE_ENHANCE_MORE)
+
         pixels = np.array(image, dtype=np.float32)
 
-        # Normalización conservadora
-        min_val = pixels.min()
-        max_val = pixels.max()
+        # Normalización agresiva
+        min_val = np.percentile(pixels, 2)  # Ignorar outliers oscuros
+        max_val = np.percentile(pixels, 98)  # Ignorar outliers claros
 
         if max_val > min_val:
-            # Contraste adaptativo (no siempre 0-255)
-            range_target = 255 * contrast_boost
-            pixels = (pixels - min_val) / (max_val - min_val) * range_target
+            # Expansión del contraste
+            pixels = (pixels - min_val) / (max_val - min_val) * 255
+            pixels = np.clip(pixels, 0, 255)
 
-            # Aplicar gamma para ajustar distribución tonal
+            # Boost adicional
+            pixels = pixels * contrast_boost
+            pixels = np.clip(pixels, 0, 255)
+
+            # Gamma
             pixels = np.power(pixels / 255.0, gamma) * 255.0
 
         return Image.fromarray(np.clip(pixels, 0, 255).astype(np.uint8))
 
     @staticmethod
+    def posterize_image(image: Image.Image, levels: int) -> Image.Image:
+        """
+        NUEVA FUNCIÓN: Posterización para crear bloques sólidos.
+        Esto es clave para el modo FORMA.
+        """
+        pixels = np.array(image, dtype=np.float32)
+
+        # Cuantizar a N niveles discretos
+        pixels = np.floor(pixels / 255.0 * (levels - 1)) / (levels - 1) * 255
+
+        return Image.fromarray(pixels.astype(np.uint8))
+
+    @staticmethod
+    def detect_edges(image: Image.Image) -> np.ndarray:
+        """
+        NUEVA FUNCIÓN: Detecta bordes para tratarlos diferente.
+        """
+        # Usar Sobel para detección de bordes
+        edges = image.filter(ImageFilter.FIND_EDGES)
+        edge_array = np.array(edges)
+
+        # Binarizar: True donde hay borde
+        return edge_array > 30
+
+    @staticmethod
     def floyd_steinberg_dithering(
             image: Image.Image,
             char_ramp: list,
-            quantization_power: float = 1.0
+            quantization_power: float = 1.0,
+            strength: float = 1.0  # NUEVO: controla intensidad del dithering
     ) -> np.ndarray:
         """
-        Aplica Floyd-Steinberg dithering con cuantización adaptativa.
-
-        Args:
-            image: Imagen en escala de grises
-            char_ramp: Lista de caracteres a usar
-            quantization_power: Potencia para la curva de cuantización
-
-        Returns:
-            Matriz de índices de caracteres
+        Floyd-Steinberg con intensidad controlable.
+        strength=0.0 → sin dithering (cuantización directa)
+        strength=1.0 → dithering completo
         """
         pixels = np.array(image, dtype=float)
         height, width = pixels.shape
         levels = len(char_ramp)
 
+        # Si strength es 0, hacer cuantización directa sin difusión de error
+        if strength == 0.0:
+            normalized = pixels / 255.0
+            indices = np.power(normalized, quantization_power) * (levels - 1)
+            return np.clip(indices, 0, levels - 1).astype(int)
+
+        # Floyd-Steinberg con intensidad controlada
         for y in range(height):
             for x in range(width):
                 old_pixel = pixels[y, x]
 
-                # Cuantización adaptativa
+                # Cuantización
                 normalized = old_pixel / 255.0
                 new_level = int(
                     np.power(normalized, quantization_power) * (levels - 1)
@@ -123,11 +163,11 @@ class ASCIIConverter:
 
                 pixels[y, x] = new_level
 
-                # Calcular error de cuantización
+                # Error de cuantización
                 quantized_value = (new_level / (levels - 1)) * 255
-                quant_error = old_pixel - quantized_value
+                quant_error = (old_pixel - quantized_value) * strength  # Aplicar strength
 
-                # Difundir error (Floyd-Steinberg)
+                # Difundir error (coeficientes estándar Floyd-Steinberg)
                 if x + 1 < width:
                     pixels[y, x + 1] += quant_error * 7 / 16
 
@@ -147,50 +187,47 @@ class ASCIIConverter:
             return_metadata: bool = False
     ) -> str | Tuple[str, dict]:
         """
-        Convierte una imagen a arte ASCII con parámetros adaptativos.
-
-        Args:
-            image: Imagen PIL
-            max_width: Ancho máximo en caracteres
-            return_metadata: Si True, devuelve también metadata del proceso
-
-        Returns:
-            String con arte ASCII (y opcionalmente dict con metadata)
+        Pipeline completo con modo adaptativo FORMA/DETALLE.
         """
-        # 1. Obtener parámetros adaptativos
+        # 1. Parámetros adaptativos
         params = ASCIIConverter.get_adaptive_params(max_width)
-
-        # 2. Obtener rampa de caracteres apropiada
         char_ramp = CharacterRamps.get_ramp_for_width(max_width)
 
-        # 3. Convertir a escala de grises
+        # 2. Escala de grises
         gray = image.convert("L")
 
-        # 4. Aplicar contraste adaptativo
+        # 3. Contraste adaptativo (con edge enhance si es modo FORMA)
         gray = ASCIIConverter.apply_adaptive_contrast(
             gray,
             gamma=params["gamma"],
-            contrast_boost=params["contrast_boost"]
+            contrast_boost=params["contrast_boost"],
+            edge_enhance=params.get("edge_enhance", False)
         )
 
-        # 5. Calcular dimensiones con proporción adaptativa
+        # 4. Posterización si es modo FORMA
+        if params["mode"] == "FORMA":
+            gray = ASCIIConverter.posterize_image(
+                gray,
+                params["posterize_levels"]
+            )
+
+        # 5. Redimensionar
         aspect_ratio = gray.height / gray.width
         new_height = int(max_width * aspect_ratio * params["aspect_ratio"])
-
-        # 6. Redimensionar
         resized = gray.resize(
             (max_width, new_height),
             Image.Resampling.LANCZOS
         )
 
-        # 7. Aplicar dithering con cuantización adaptativa
+        # 6. Dithering con intensidad controlada
         indexed_pixels = ASCIIConverter.floyd_steinberg_dithering(
             resized,
             char_ramp,
-            quantization_power=params["quantization_power"]
+            quantization_power=params["quantization_power"],
+            strength=params["dithering_strength"]  # CLAVE: 0.0 para FORMA
         )
 
-        # 8. Construir ASCII art
+        # 7. Construir ASCII
         lines = [
             ''.join(char_ramp[pixel] for pixel in row)
             for row in indexed_pixels
@@ -198,12 +235,14 @@ class ASCIIConverter:
 
         ascii_art = '\n'.join(lines)
 
-        # 9. Preparar metadata si se solicita
+        # 8. Metadata
         if return_metadata:
             metadata = {
                 "width": max_width,
                 "height": new_height,
                 "profile": params["profile_name"],
+                "mode": params["mode"],  # NUEVO
+                "dithering_strength": params["dithering_strength"],  # NUEVO
                 "ramp_info": CharacterRamps.get_ramp_info(max_width),
                 "parameters": params,
                 "original_size": (image.width, image.height)
