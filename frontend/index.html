@@ -3,58 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASCII Image Generator</title>
+    <title>░▒▓ ASCII ART GENERATOR ▓▒░</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>█</text></svg>">
 </head>
 <body>
+    <!-- Efecto de escanlines retro -->
+    <div class="scanlines"></div>
+
+    <!-- Grid de fondo tipo terminal -->
+    <div class="terminal-grid"></div>
+
     <div class="container">
-        <header>
-            <h1>🎨 ASCII Image Generator</h1>
-            <p>Convierte tus imágenes a arte ASCII usando Floyd-Steinberg Dithering</p>
+        <header class="glitch-container">
+            <h1 class="glitch" data-text="░▒▓ ASCII ART GENERATOR ▓▒░">
+                ░▒▓ ASCII ART GENERATOR ▓▒░
+            </h1>
+            <div class="subtitle">
+                <span class="blink">█</span> FLOYD-STEINBERG DITHERING ENGINE <span class="blink">█</span>
+            </div>
+            <div class="ascii-decoration">
+                ╔═══════════════════════════════════════════════════════╗<br>
+                ║ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[ PIXEL TO ASCII CONVERSION SYSTEM ]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;║<br>
+                ╚═══════════════════════════════════════════════════════╝
+            </div>
         </header>
 
         <main>
-            <section class="upload-section">
+            <!-- UPLOAD SECTION -->
+            <section class="retro-panel upload-section">
+                <div class="panel-header">
+                    <span class="panel-title">[ STEP 1: IMAGE INPUT ]</span>
+                    <span class="panel-status">READY</span>
+                </div>
+
                 <div class="upload-area" id="uploadArea">
                     <input type="file" id="imageInput" accept="image/*" hidden>
                     <div class="upload-content">
-                        <p>📤 Arrastra una imagen aquí o haz clic para seleccionar</p>
-                        <button id="selectButton">Seleccionar imagen</button>
-                        <p style="margin-top: 10px; font-size: 0.9em; color: #7f8c8d;">
-                            Formatos: JPG, PNG, WEBP, GIF, BMP • Máx: 10MB
+                        <div class="upload-icon">
+                            ┌─────────────┐<br>
+                            │&nbsp;&nbsp;░░░░░░░░░&nbsp;&nbsp;│<br>
+                            │&nbsp;&nbsp;░░░▓▓░░░&nbsp;&nbsp;│<br>
+                            │&nbsp;&nbsp;░░▓██▓░░&nbsp;&nbsp;│<br>
+                            │&nbsp;&nbsp;░▓████▓░&nbsp;&nbsp;│<br>
+                            │&nbsp;&nbsp;▓██████▓&nbsp;&nbsp;│<br>
+                            └─────────────┘
+                        </div>
+                        <p class="upload-text">
+                            <span class="text-highlight">DRAG & DROP</span> or <span class="text-highlight">CLICK</span> to SELECT
+                        </p>
+                        <button id="selectButton" class="retro-button">
+                            <span class="button-brackets">[</span> SELECT IMAGE <span class="button-brackets">]</span>
+                        </button>
+                        <p class="upload-info">
+                            <span class="info-label">FORMATS:</span> JPG • PNG • WEBP • GIF • BMP<br>
+                            <span class="info-label">MAX SIZE:</span> 10MB
                         </p>
                     </div>
                 </div>
 
-                <div class="options">
-                    <label for="widthSlider">Ancho del ASCII: <span id="widthValue">100</span> caracteres</label>
-                    <input type="range" id="widthSlider" min="50" max="200" value="100" step="10">
+                <!-- OPTIONS -->
+                <div class="options-panel">
+                    <div class="option-row">
+                        <label for="widthSlider" class="option-label">
+                            <span class="label-icon">▓</span> ASCII WIDTH:
+                            <span id="widthValue" class="value-display">100</span> CHARS
+                        </label>
+                        <input type="range" id="widthSlider" min="15" max="200" value="100" step="5" class="retro-slider">
+                    </div>
+                    <div id="profileInfo" class="profile-info"></div>
                 </div>
 
-                <button id="convertButton" disabled>Convertir a ASCII</button>
+                <!-- METADATA TOGGLE -->
+                <div class="metadata-toggle-container">
+                    <label class="retro-checkbox">
+                        <input type="checkbox" id="metadataToggle">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">
+                            <span class="label-icon">◆</span> SHOW TECHNICAL DATA
+                        </span>
+                    </label>
+                </div>
+
+                <button id="convertButton" class="retro-button convert-button" disabled>
+                    <span class="button-brackets">►</span> CONVERT TO ASCII <span class="button-brackets">◄</span>
+                </button>
             </section>
 
-            <section class="preview-section">
-                <h3>Vista previa:</h3>
+            <!-- PREVIEW SECTION -->
+            <section class="retro-panel preview-section">
+                <div class="panel-header">
+                    <span class="panel-title">[ STEP 2: IMAGE PREVIEW ]</span>
+                    <span class="panel-status">STANDBY</span>
+                </div>
                 <div class="preview-container">
-                    <div id="imagePreview" style="display: none;"></div>
+                    <div id="imagePreview" class="image-preview-wrapper"></div>
+                    <p id="fileName" class="file-name"></p>
                 </div>
             </section>
 
-            <section class="result-section" id="resultSection" hidden>
-                <h2>✨ Resultado:</h2>
-                <div class="ascii-container">
-                    <pre id="asciiResult"></pre>
+            <!-- METADATA SECTION -->
+            <section class="retro-panel metadata-section" id="metadataSection" hidden>
+                <div class="panel-header">
+                    <span class="panel-title">[ TECHNICAL SPECIFICATIONS ]</span>
+                    <span class="panel-status blink">ANALYZING</span>
                 </div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button id="copyButton">📋 Copiar al portapapeles</button>
-                    <button id="downloadButton">💾 Descargar como .txt</button>
+                <div id="metadataContent" class="metadata-content"></div>
+            </section>
+
+            <!-- RESULT SECTION -->
+            <section class="retro-panel result-section" id="resultSection" hidden>
+                <div class="panel-header">
+                    <span class="panel-title">[ OUTPUT: ASCII ART ]</span>
+                    <span class="panel-status success-status">COMPLETE</span>
+                </div>
+
+                <div class="ascii-container">
+                    <div class="ascii-header">
+                        <span>╔═══════ RENDER ═══════╗</span>
+                    </div>
+                    <pre id="asciiResult"></pre>
+                    <div class="ascii-footer">
+                        <span>╚══════════════════════╝</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="copyButton" class="retro-button">
+                        <span class="button-icon">╠═</span> COPY TO CLIPBOARD
+                    </button>
+                    <button id="downloadButton" class="retro-button">
+                        <span class="button-icon">▼</span> DOWNLOAD .TXT
+                    </button>
                 </div>
             </section>
         </main>
 
-        <footer>
-            <p>ASCII Image Generator con Floyd–Steinberg Dithering • 2024</p>
+        <footer class="retro-footer">
+            <div class="footer-line">
+                ═══════════════════════════════════════════════════════
+            </div>
+            <p class="footer-text">
+                <span class="blink">▓</span> ASCII ART GENERATOR v2.0
+                <span class="footer-separator">│</span>
+                FLOYD-STEINBERG ALGORITHM
+                <span class="footer-separator">│</span>
+                2025 <span class="blink">▓</span>
+            </p>
+            <div class="footer-ascii">
+                ░▒▓█ CODED WITH <span class="heart-pixel">♥</span> █▓▒░
+            </div>
         </footer>
     </div>
 

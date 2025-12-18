@@ -1,11 +1,15 @@
+"""
+Configuración centralizada de la aplicación.
+"""
+
 from pydantic_settings import BaseSettings
 from typing import List
 
 
 class Settings(BaseSettings):
-    # Configuración básica de la aplicación
+    # Información de la aplicación
     app_name: str = "ASCII Image Generator"
-    app_version: str = "1.0.0"
+    app_version: str = "2.0.0"  # ← Actualizar versión
     debug: bool = False
 
     # Configuración del servidor
@@ -24,13 +28,18 @@ class Settings(BaseSettings):
 
     # Configuración de procesamiento de imágenes
     default_max_width: int = 100
-    min_max_width: int = 50
+    min_max_width: int = 15  # ← Reducir mínimo
     max_max_width: int = 200
-    default_char_height_ratio: float = 0.55
 
-    enable_contrast_normalization: bool = True
+    # Límites de dimensiones de imagen
+    min_image_dimension: int = 10  # ← NUEVO
+    max_image_dimension: int = 10000  # ← NUEVO
 
-    # Configuración de caché (opcional)
+    # Sistema adaptativo (NUEVO)
+    enable_adaptive_mode: bool = True
+    enable_metadata: bool = False  # Por defecto no devolver metadata
+
+    # Configuración de caché
     enable_cache: bool = False
     cache_ttl: int = 3600
 
@@ -39,5 +48,4 @@ class Settings(BaseSettings):
         case_sensitive = False
 
 
-# Crear una instancia de configuración para usar en toda la aplicación
 settings = Settings()
