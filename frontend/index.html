@@ -9,7 +9,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>ASCII Image Generator</h1>
+            <h1>🎨 ASCII Image Generator</h1>
             <p>Convierte tus imágenes a arte ASCII usando Floyd-Steinberg Dithering</p>
         </header>
 
@@ -18,37 +18,43 @@
                 <div class="upload-area" id="uploadArea">
                     <input type="file" id="imageInput" accept="image/*" hidden>
                     <div class="upload-content">
-                        <p>Arrastra una imagen aquí o haz clic para seleccionar</p>
+                        <p>📤 Arrastra una imagen aquí o haz clic para seleccionar</p>
                         <button id="selectButton">Seleccionar imagen</button>
+                        <p style="margin-top: 10px; font-size: 0.9em; color: #7f8c8d;">
+                            Formatos: JPG, PNG, WEBP, GIF, BMP • Máx: 10MB
+                        </p>
                     </div>
                 </div>
 
                 <div class="options">
-                    <label for="widthSlider">Ancho del ASCII: <span id="widthValue">100</span></label>
-                    <input type="range" id="widthSlider" min="50" max="200" value="100">
+                    <label for="widthSlider">Ancho del ASCII: <span id="widthValue">100</span> caracteres</label>
+                    <input type="range" id="widthSlider" min="50" max="200" value="100" step="10">
                 </div>
 
                 <button id="convertButton" disabled>Convertir a ASCII</button>
             </section>
 
             <section class="preview-section">
+                <h3>Vista previa:</h3>
                 <div class="preview-container">
-                    <div class="preview-image" id="imagePreview"></div>
+                    <div id="imagePreview" style="display: none;"></div>
                 </div>
             </section>
 
             <section class="result-section" id="resultSection" hidden>
-                <h2>Resultado:</h2>
+                <h2>✨ Resultado:</h2>
                 <div class="ascii-container">
                     <pre id="asciiResult"></pre>
                 </div>
-                <button id="copyButton">Copiar al portapapeles</button>
-                <button id="downloadButton">Descargar como archivo de texto</button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="copyButton">📋 Copiar al portapapeles</button>
+                    <button id="downloadButton">💾 Descargar como .txt</button>
+                </div>
             </section>
         </main>
 
         <footer>
-            <p>ASCII Image Generator con Floyd–Steinberg Dithering</p>
+            <p>ASCII Image Generator con Floyd–Steinberg Dithering • 2024</p>
         </footer>
     </div>
 

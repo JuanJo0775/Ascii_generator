@@ -1,4 +1,4 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from typing import List
 
 
@@ -26,11 +26,13 @@ class Settings(BaseSettings):
     default_max_width: int = 100
     min_max_width: int = 50
     max_max_width: int = 200
-    default_char_height_ratio: float = 0.55  # Corrección de proporción de caracteres
+    default_char_height_ratio: float = 0.55
+
+    enable_contrast_normalization: bool = True
 
     # Configuración de caché (opcional)
     enable_cache: bool = False
-    cache_ttl: int = 3600  # segundos
+    cache_ttl: int = 3600
 
     class Config:
         env_file = ".env"

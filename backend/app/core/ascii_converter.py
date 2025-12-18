@@ -3,29 +3,51 @@ from PIL import Image
 
 
 class ASCIIConverter:
-    # Conjunto de caracteres Unicode ordenados por densidad
+    """
+    Conversor de imágenes a arte ASCII/Braille
+    usando una rampa corta de alto contraste.
+    """
+
+    # Rampa de caracteres (claro → oscuro)
     UNICODE_CHARS = [
-        '⣀', '⣁', '⣂', '⣃', '⣄', '⣅', '⣆', '⣇', '⣈', '⣉', '⣊', '⣋', '⣌', '⣍', '⣎', '⣏',
-        '⣐', '⣑', '⣒', '⣓', '⣔', '⣕', '⣖', '⣗', '⣘', '⣙', '⣚', '⣛', '⣜', '⣝', '⣞', '⣟',
-        '⣠', '⣡', '⣢', '⣣', '⣤', '⣥', '⣦', '⣧', '⣨', '⣩', '⣪', '⣫', '⣬', '⣭', '⣮', '⣯',
-        '⣰', '⣱', '⣲', '⣳', '⣴', '⣵', '⣶', '⣷', '⣸', '⣹', '⣺', '⣻', '⣼', '⣽', '⣾', '⣿', '⠀'
+        '⠀',  # blanco
+        '⠁',
+        '⠃',
+        '⠇',
+        '⠏',
+        '⠗',
+        '⠟',
+        '⠯',
+        '⠿',
+        '⡿',
+        '⢿',
+        '⣻',
+        '⣽',
+        '⣿'  # negro
     ]
 
     @staticmethod
-    def floyd_steinberg_dithering(image):
-        """Aplica el algoritmo de Floyd-Steinberg Dithering a una imagen en escala de grises."""
+    def floyd_steinberg_dithering(image: Image.Image) -> np.ndarray:
+        """
+        Aplica Floyd–Steinberg dithering sobre una imagen en escala de grises.
+        Devuelve una matriz de índices de caracteres.
+        """
         pixels = np.array(image, dtype=float)
         height, width = pixels.shape
+        levels = len(ASCIIConverter.UNICODE_CHARS)
 
         for y in range(height):
             for x in range(width):
                 old_pixel = pixels[y, x]
-                new_pixel = round(old_pixel / 255 * (len(ASCIIConverter.UNICODE_CHARS) - 1))
-                pixels[y, x] = new_pixel
 
-                quant_error = old_pixel - new_pixel / (len(ASCIIConverter.UNICODE_CHARS) - 1) * 255
+                # Cuantización correcta
+                new_level = int((old_pixel / 255) ** 0.9 * (levels - 1))
+                pixels[y, x] = new_level
 
-                # Distribuir el error a los píxeles vecinos
+                # Error de cuantización
+                quant_error = old_pixel - (new_level / (levels - 1)) * 255
+
+                # Difusión del error
                 if x + 1 < width:
                     pixels[y, x + 1] += quant_error * 7 / 16
                 if y + 1 < height:
@@ -35,28 +57,33 @@ class ASCIIConverter:
                     if x + 1 < width:
                         pixels[y + 1, x + 1] += quant_error * 1 / 16
 
-        return pixels.astype(int)
+        return np.clip(pixels, 0, levels - 1).astype(int)
 
     @staticmethod
-    def image_to_ascii(image, max_width=100):
-        """Convierte una imagen a arte ASCII usando caracteres Unicode."""
-        # Convertir a escala de grises
-        gray_image = image.convert('L')
+    def image_to_ascii(image: Image.Image, max_width: int = 100) -> str:
+        """
+        Convierte una imagen a arte ASCII/Braille.
+        """
+        # Escala de grises
+        gray = image.convert("L")
 
-        # Calcular nueva altura manteniendo proporción
-        aspect_ratio = gray_image.height / gray_image.width
-        new_height = int(max_width * aspect_ratio * 0.55)  # 0.55 corrige la proporción de los caracteres
+        # Mantener proporción (ajuste para caracteres)
+        aspect_ratio = gray.height / gray.width
+        new_height = int(max_width * aspect_ratio * 0.55)
 
-        # Redimensionar imagen
-        resized_image = gray_image.resize((max_width, new_height))
+        # Redimensionar
+        resized = gray.resize(
+            (max_width, new_height),
+            Image.Resampling.LANCZOS
+        )
 
-        # Aplicar dithering
-        dithered = ASCIIConverter.floyd_steinberg_dithering(resized_image)
+        # Dithering
+        indexed_pixels = ASCIIConverter.floyd_steinberg_dithering(resized)
 
-        # Convertir a ASCII
-        ascii_art = []
-        for row in dithered:
-            line = ''.join([ASCIIConverter.UNICODE_CHARS[pixel] for pixel in row])
-            ascii_art.append(line)
+        # Construir ASCII
+        lines = [
+            ''.join(ASCIIConverter.UNICODE_CHARS[p] for p in row)
+            for row in indexed_pixels
+        ]
 
-        return '\n'.join(ascii_art)
+        return '\n'.join(lines)
